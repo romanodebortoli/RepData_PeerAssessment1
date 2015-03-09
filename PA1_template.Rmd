@@ -1,4 +1,11 @@
 ---
+title: "PA1_template.Rmd"
+author: "Romano De Bortoli"
+date: "Monday, March 09, 2015"
+output: html_document
+---
+
+---
 title: "Reproducible Research: Peer Assessment 1"
 output: 
   html_document:
@@ -8,18 +15,117 @@ output:
 
 ## Loading and preprocessing the data
 
+```{r}
+setwd("C:\\Users\\Romano\\Desktop\\Coursera\\Certificate Data Analisys\\Reproducible Research\\Course Project1")
+dati<-read.csv("activity.csv")
+```
+
+```{r, echo=FALSE}
+Sys.setlocale(category = "LC_TIME", "English")
+library(lubridate)
+library(lattice) 
+```
+
+
+
 
 
 ## What is mean total number of steps taken per day?
 
+```{r}
+dati$date<-ymd(as.character(dati$date))
+
+step_day<-aggregate(dati$steps, by=list(dati$date), FUN=sum, na.rm=TRUE)
+
+hist(step_day$x, main="Mean steps per day", xlab="steps", ylab="Frequency")
+
+step_meanday<-aggregate(dati$steps, by=list(dati$date), FUN=mean, na.rm=TRUE)
+step_medianday<-aggregate(dati$steps, by=list(dati$date), FUN=median, na.rm=TRUE)
+
+colnames(step_meanday)<-c("date", "value")
+colnames(step_medianday)<-c("date", "value")
+
+plot(step_meanday, type="l", col="blue", main="MeanDay step")
+plot(step_medianday, type="l", col="red", main="MedianDay step")
+
+```
 
 
 ## What is the average daily activity pattern?
 
+```{r}
+
+
+step_interval<-with(dati, aggregate(steps, by=list(interval), FUN=mean, na.rm=TRUE))
+colnames(step_interval)<-c("interval", "step")
+plot(step_interval, type="l", col="blue")
+
+max_step<-max(step_interval$step)
+max_interval<-step_interval$interval[step_interval$step==max_step]
+
+abline(v = max_interval, col="red")
+text(x=max_interval-100, y=0, as.character(max_interval), col="red")
+
+```
 
 
 ## Imputing missing values
 
+```{r}
+missing_row <- dim(dati)[1] - sum(complete.cases(dati))
+
+clean<-is.na(dati$step)
+
+dati_fit <-dati
+dati_fit$mean<-step_interval$step
+dati_fit$steps[clean]<-dati_fit$mean[clean]
+dati_fit$steps[!(clean)]<-dati$steps[!(clean)]
+dati_fit$mean<-NULL
+
+step_fit_day<-aggregate(dati_fit$steps, by=list(dati_fit$date), FUN=sum, na.rm=TRUE)
+
+par(mfrow=c(1, 2))
+
+hist(step_day$x, main="Step missing", xlab="total step")
+hist(step_fit_day$x, main="Step no missing", xlab="total step")
+
+par(mfrow=c(1, 1))
+
+step_fit_meanday<-aggregate(dati_fit$steps, by=list(dati_fit$date), FUN=mean, na.rm=TRUE)
+step_fit_medianday<-aggregate(dati_fit$steps, by=list(dati_fit$date), FUN=median, na.rm=TRUE)
+
+colnames(step_fit_meanday)<-c("date", "value")
+colnames(step_fit_medianday)<-c("date", "value")
+
+delta_mean<-step_meanday$value-step_fit_meanday$value
+delta_median<-step_medianday$value-step_fit_medianday$value
+
+par(mfrow=c(1, 2))
+
+plot(step_fit_meanday, type="l", col="blue", main="Step fit missing", ylab="Mean steps per day")
+plot(step_meanday,type="l", col="red", main="Step with missing", ylab="Mean steps per day")
+
+par(mfrow=c(1, 2))
+plot(step_fit_medianday, type="l", col="blue", main="Step fit missing", ylab="Median steps per day")
+plot(step_medianday,type="l", col="red", main="Step with missing", ylab="Median steps per day")
+par(mfrow=c(1, 1))
+
+```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+
+
+dati_fit$week<-as.factor(ifelse(weekdays(dati_fit$date)=="Saturday"|weekdays(dati_fit$date)=="Sunday", "weekend","weekday"))
+
+step_week_mean_interval<-with(dati_fit, aggregate(steps, by=list(interval, week), FUN=mean, na.rm=TRUE))
+colnames(step_week_mean_interval)<-c("interval", "week", "steps")
+
+with(step_week_mean_interval, xyplot(steps~interval|week,
+  type = "l",
+  ylab="Number of steps", xlab="Interval",
+	layout=c(1,2)))
+```
+
